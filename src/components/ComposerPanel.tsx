@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import EmotionAnalyzer from './EmotionAnalyzer';
 import EmotionWheel from './EmotionWheel';
@@ -91,13 +90,13 @@ const ComposerPanel = () => {
     
     setSelectedEmotion(randomEmotion);
     setFormData({
-      subEmotion: Math.floor(Math.random() * emotionData.subEmotions.length),
-      mood: Math.floor(Math.random() * emotionData.moods.length),
+      subEmotion: emotionData.subEmotions[Math.floor(Math.random() * emotionData.subEmotions.length)].toLowerCase().replace(/\s+/g, '-'),
+      mood: emotionData.moods[Math.floor(Math.random() * emotionData.moods.length)].toLowerCase(),
       vocalType: ['male-lead', 'female-lead', 'duet', 'group-male'][Math.floor(Math.random() * 4)],
       singerStyle: ['smooth', 'powerful', 'soulful'][Math.floor(Math.random() * 3)],
-      genre1: Math.floor(Math.random() * emotionData.genres.primary.length),
-      genre2: Math.floor(Math.random() * emotionData.genres.secondary.length),
-      genre3: Math.floor(Math.random() * emotionData.genres.styles.length),
+      genre1: emotionData.genres.primary[Math.floor(Math.random() * emotionData.genres.primary.length)].toLowerCase().replace(/\s+/g, '-'),
+      genre2: emotionData.genres.secondary[Math.floor(Math.random() * emotionData.genres.secondary.length)].toLowerCase().replace(/\s+/g, '-'),
+      genre3: emotionData.genres.styles[Math.floor(Math.random() * emotionData.genres.styles.length)].toLowerCase().replace(/\s+/g, '-'),
       language: 'english',
       era: 'contemporary',
       tempo: 'medium',
