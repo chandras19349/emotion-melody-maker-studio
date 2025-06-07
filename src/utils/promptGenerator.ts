@@ -23,8 +23,8 @@ export const generateMusicPrompt = (params: any) => {
   const era = getDisplayValue('era', formData.era) || 'Contemporary';
   const tempo = getDisplayValue('tempo', formData.tempo) || 'Medium';
 
-  // Create the music prompt
-  let prompt = createIntelligentPrompt({
+  // Create the structured music prompt
+  let prompt = createStructuredPrompt({
     emotion, subEmotion, mood, vocalType, singerStyle,
     genre1, genre2, style, language, era, tempo,
     lyrics, 
@@ -58,72 +58,88 @@ const getDisplayValue = (field: string, value: string) => {
   ).join(' ');
 };
 
-const createIntelligentPrompt = (params: any) => {
+const createStructuredPrompt = (params: any) => {
+  const tempoMap = {
+    'slow': '60-90 BPM',
+    'medium': '90-120 BPM', 
+    'upbeat': '120-140 BPM',
+    'fast': '140-180 BPM',
+    'variable': 'Variable tempo'
+  };
+
+  const keyMap = {
+    'joy': 'C major with bright progressions',
+    'love': 'G major with romantic chord substitutions',
+    'sadness': 'D minor with melancholic progressions',
+    'hope': 'F major with uplifting modulations',
+    'empowerment': 'E major with powerful chord movements',
+    'yearning': 'A minor with longing progressions',
+    'reflection': 'G major with contemplative changes',
+    'defiance': 'B minor with aggressive progressions',
+    'passion': 'A major with sensual chord flows',
+    'nostalgia': 'F major with bittersweet progressions'
+  };
+
+  const structureMap = {
+    'joy': 'Intro-Verse-Chorus-Verse-Chorus-Bridge-Double Chorus-Outro',
+    'love': 'Intro-Verse-Chorus-Verse-Chorus-Bridge-Final Chorus-Outro',
+    'sadness': 'Intro-Verse-Chorus-Verse-Chorus-Instrumental-Final Chorus',
+    'empowerment': 'Intro-Verse-Pre-Chorus-Chorus-Verse-Pre-Chorus-Chorus-Bridge-Final Chorus',
+    'default': 'Intro-Verse-Chorus-Verse-Chorus-Bridge-Final Chorus-Outro'
+  };
+
+  const vocalCharacteristics = {
+    'male lead': 'rich baritone with emotional depth',
+    'female lead': 'expressive soprano with dynamic range',
+    'duet': 'harmonized male-female interplay',
+    'group vocals': 'layered harmonies with call-response elements'
+  };
+
+  const instrumentationMap = {
+    'pop': 'synthesizers, electric guitar, bass, programmed drums',
+    'rock': 'electric guitars, bass guitar, live drums, occasional keys',
+    'ballad': 'piano foundation, strings, acoustic guitar, soft percussion',
+    'dance': 'electronic beats, synthesizers, bass drops, vocal chops',
+    'folk': 'acoustic guitar, harmonica, light percussion, string accents'
+  };
+
+  // Build structured prompt with character limit awareness
   let prompt = '';
   
-  // Opening with emotion and style
-  prompt += `[${params.emotion.toUpperCase()} - ${params.subEmotion}] `;
-  prompt += `${params.genre1} x ${params.genre2} fusion with ${params.style} elements. `;
+  // Style section (80-100 chars)
+  prompt += `[Style: ${params.genre1} ${params.genre2}, ${params.subEmotion.toLowerCase()} with ${params.mood.toLowerCase()} undertones] `;
   
-  // Mood and atmosphere
-  prompt += `${params.mood} atmosphere with ${params.emotionIntensity}% emotional intensity. `;
+  // Vocals section (80-120 chars)
+  const vocalChar = vocalCharacteristics[params.vocalType.toLowerCase()] || 'expressive delivery';
+  prompt += `[Vocals: ${params.vocalType}, ${params.singerStyle.toLowerCase()}, ${vocalChar}] `;
   
-  // Vocal specifications
-  prompt += `${params.vocalType} featuring ${params.singerStyle.toLowerCase()} vocal delivery`;
-  if (params.language !== 'English') {
-    prompt += ` in ${params.language}`;
-  }
-  prompt += '. ';
+  // Instrumentation section (80-120 chars)
+  const instruments = instrumentationMap[params.genre1.toLowerCase()] || 'dynamic instrumental arrangement';
+  prompt += `[Instrumentation: ${instruments}] `;
   
-  // Tempo and rhythm
-  prompt += `${params.tempo} tempo creating `;
+  // Tempo section (40-60 chars)
+  const tempoDesc = tempoMap[params.tempo.toLowerCase()] || params.tempo;
+  prompt += `[Tempo: ${tempoDesc}] `;
   
-  // Add emotion-specific descriptions
-  const emotionDescriptions = {
-    joy: "infectious energy that makes listeners want to dance and celebrate",
-    love: "intimate connection that touches the heart deeply",
-    sadness: "cathartic release through melodic sorrow",
-    hope: "uplifting journey from darkness to light",
-    empowerment: "unstoppable force of confidence and strength",
-    yearning: "aching beauty of unfulfilled desire",
-    reflection: "contemplative space for introspection",
-    defiance: "rebellious energy challenging the status quo",
-    passion: "sensual atmosphere of intense romantic connection",
-    nostalgia: "bittersweet journey through cherished memories"
-  };
+  // Mood section (60-80 chars)
+  prompt += `[Mood: ${params.mood}, ${params.emotion} atmosphere] `;
   
-  prompt += (emotionDescriptions[params.emotion] || "powerful emotional experience") + '. ';
+  // Key section (60-80 chars)
+  const keyInfo = keyMap[params.emotion] || 'C major with versatile progressions';
+  prompt += `[Key: ${keyInfo}] `;
   
-  // Era and production style
-  if (params.era !== 'Contemporary') {
-    prompt += `${params.era} production aesthetics with modern polish. `;
-  }
+  // Structure section (60-80 chars)
+  const structure = structureMap[params.emotion] || structureMap.default;
+  prompt += `[Structure: ${structure}] `;
   
-  // Genre fusion details
-  if (params.genreFusion > 60) {
-    prompt += `Bold ${params.genreFusion}% genre fusion creating unexpected sonic combinations. `;
-  }
+  // Pacing section (80-120 chars)
+  const intensityDesc = params.emotionIntensity > 70 ? 'high energy dynamics' : 
+                       params.emotionIntensity > 40 ? 'moderate build-ups' : 'subtle dynamic changes';
+  prompt += `[Pacing: ${intensityDesc}, ${params.era.toLowerCase()} production style]`;
   
-  // Commercial vs experimental
-  if (params.commercial > 70) {
-    prompt += "Radio-ready production with mass appeal. ";
-  } else if (params.commercial < 30) {
-    prompt += "Experimental approach pushing creative boundaries. ";
-  }
-
-  // Add AI-detected emotions if available
-  if (params.detectedEmotions && params.detectedEmotions.length > 0) {
-    prompt += `\n\nAI-Detected Emotions: `;
-    params.detectedEmotions.forEach((emotion, index) => {
-      prompt += `${emotion.emotion} (${emotion.confidence}%)`;
-      if (index < params.detectedEmotions.length - 1) prompt += ', ';
-    });
-    prompt += '.';
-  }
-
-  // Add lyrics analysis if available
-  if (params.lyrics) {
-    prompt += `\n\nLyrics Theme: Capturing the essence of "${params.lyrics.substring(0, 100)}${params.lyrics.length > 100 ? '...' : ''}"`;
+  // Ensure under 990 characters
+  if (prompt.length > 990) {
+    prompt = prompt.substring(0, 987) + '...';
   }
 
   return prompt;
