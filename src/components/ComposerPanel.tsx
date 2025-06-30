@@ -3,10 +3,12 @@ import EmotionAnalyzer from './EmotionAnalyzer';
 import EmotionWheel from './EmotionWheel';
 import ControlsGrid from './ControlsGrid';
 import AISuggestions from './AISuggestions';
+import AIInsights from './AIInsights';
 import AdvancedOptions from './AdvancedOptions';
 import ButtonGroup from './ButtonGroup';
 import { emotionMusicDatabase } from '../data/emotionDatabase';
 import { analyzeEmotions, generateAISuggestions } from '../utils/aiAnalysis';
+import { aiPromptGenerator } from '../utils/aiMusicGenerator';
 
 const ComposerPanel = () => {
   const [selectedEmotion, setSelectedEmotion] = useState(null);
@@ -30,22 +32,62 @@ const ComposerPanel = () => {
     commercial: 50
   });
 
+  // AI Auto-generation when emotion or key fields change
+  useEffect(() => {
+    if (selectedEmotion) {
+      generateAIRecommendationsAuto();
+    }
+  }, [selectedEmotion]);
+
+  // AI Auto-generation when lyrics change (debounced)
+  useEffect(() => {
+    if (lyrics.length > 20) {
+      const timeoutId = setTimeout(() => {
+        generateAIRecommendationsAuto();
+      }, 1000); // 1 second debounce
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [lyrics]);
+
+  const generateAIRecommendationsAuto = () => {
+    if (!selectedEmotion && lyrics.length < 20) return;
+    
+    // Generate AI insights automatically
+    const recommendation = aiPromptGenerator.generateIntelligentRecommendations({
+      selectedEmotion,
+      formData,
+      lyrics
+    });
+    
+    // Auto-apply high-confidence recommendations
+    if (recommendation.confidence > 0.7) {
+      applyAIRecommendations(recommendation.suggestions, false);
+    }
+  };
+
   const handleEmotionSelect = (emotion) => {
     setSelectedEmotion(emotion);
     // Update form options based on selected emotion
     updateFormOptions(emotion);
+    
+    // Generate AI recommendations immediately
+    setTimeout(() => {
+      generateAIRecommendationsAuto();
+    }, 100);
   };
 
   const updateFormOptions = (emotion) => {
     if (emotionMusicDatabase[emotion]) {
-      // Reset form data when emotion changes
+      // Reset form data when emotion changes, but keep user's explicit choices
       setFormData(prev => ({
         ...prev,
-        subEmotion: '',
-        mood: '',
-        genre1: '',
-        genre2: '',
-        genre3: ''
+        // Only reset if not explicitly set by user
+        subEmotion: prev.subEmotion || '',
+        mood: prev.mood || '',
+        genre1: prev.genre1 || '',
+        genre2: prev.genre2 || '',
+        genre3: prev.genre3 || ''
       }));
     }
   };
@@ -66,6 +108,11 @@ const ComposerPanel = () => {
       setDetectedEmotions(emotions);
       setAiSuggestions(suggestions);
       setIsAnalyzing(false);
+      
+      // Auto-select the top detected emotion if none selected
+      if (!selectedEmotion && emotions.length > 0) {
+        setSelectedEmotion(emotions[0].emotion);
+      }
     }, 1500);
   };
 
@@ -81,6 +128,58 @@ const ComposerPanel = () => {
       genre2: suggestion.genre2.toLowerCase().replace(/\s+/g, '-'),
       genre3: suggestion.style.toLowerCase().replace(/\s+/g, '-')
     }));
+  };
+
+  const applyAIRecommendations = (recommendations, showNotification = true) => {
+    const updates = {};
+    
+    // Convert AI recommendations to form format
+    Object.entries(recommendations).forEach(([key, value]) => {
+      if (value) {
+        const kebabValue = String(value).toLowerCase().replace(/\s+/g, '-');
+        
+        switch (key) {
+          case 'subEmotion':
+            updates.subEmotion = kebabValue;
+            break;
+          case 'mood':
+            updates.mood = kebabValue;
+            break;
+          case 'vocalType':
+            updates.vocalType = kebabValue;
+            break;
+          case 'singerStyle':
+            updates.singerStyle = kebabValue;
+            break;
+          case 'genre1':
+            updates.genre1 = kebabValue;
+            break;
+          case 'genre2':
+            updates.genre2 = kebabValue;
+            break;
+          case 'tempo':
+            updates.tempo = kebabValue;
+            break;
+          case 'era':
+            updates.era = kebabValue;
+            break;
+        }
+      }
+    });
+    
+    setFormData(prev => ({ ...prev, ...updates }));
+    
+    if (showNotification) {
+      // Show a brief notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-slideIn';
+      notification.textContent = 'AI recommendations applied!';
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 3000);
+    }
   };
 
   const handleRandomize = () => {
@@ -106,6 +205,17 @@ const ComposerPanel = () => {
     });
   };
 
+  const handleFormDataChange = (newFormData) => {
+    setFormData(newFormData);
+    
+    // Trigger AI analysis when significant changes are made
+    if (selectedEmotion || lyrics.length > 10) {
+      setTimeout(() => {
+        generateAIRecommendationsAuto();
+      }, 500);
+    }
+  };
+
   return (
     <div className="bg-white/95 rounded-3xl shadow-2xl p-10 mb-8">
       <EmotionAnalyzer
@@ -119,10 +229,18 @@ const ComposerPanel = () => {
         onEmotionSelect={handleEmotionSelect}
       />
       
+      {/* AI Insights Component - New intelligent AI panel */}
+      <AIInsights
+        selectedEmotion={selectedEmotion}
+        formData={formData}
+        lyrics={lyrics}
+        onApplyAIRecommendations={applyAIRecommendations}
+      />
+      
       <ControlsGrid
         selectedEmotion={selectedEmotion}
         formData={formData}
-        setFormData={setFormData}
+        setFormData={handleFormDataChange}
         lyrics={lyrics}
         setLyrics={setLyrics}
       />
@@ -134,7 +252,7 @@ const ComposerPanel = () => {
       
       <AdvancedOptions
         formData={formData}
-        setFormData={setFormData}
+        setFormData={handleFormDataChange}
       />
       
       <ButtonGroup

@@ -1,5 +1,5 @@
-
 import { emotionMusicDatabase } from '../data/emotionDatabase';
+import { aiPromptGenerator } from './aiMusicGenerator';
 
 export const generateMusicPrompt = (params: any) => {
   const {
@@ -10,43 +10,30 @@ export const generateMusicPrompt = (params: any) => {
     aiSuggestions
   } = params;
 
-  // Get display values from form data
-  const emotion = selectedEmotion || 'mixed';
-  const subEmotion = getDisplayValue('subEmotion', formData.subEmotion) || 'Various';
-  const mood = getDisplayValue('mood', formData.mood) || 'Dynamic';
-  const vocalType = getDisplayValue('vocalType', formData.vocalType) || 'Versatile';
-  const singerStyle = getDisplayValue('singerStyle', formData.singerStyle) || 'Expressive';
-  const genre1 = getDisplayValue('genre1', formData.genre1) || 'Contemporary';
-  const genre2 = getDisplayValue('genre2', formData.genre2) || 'Fusion';
-  const style = getDisplayValue('genre3', formData.genre3) || 'Modern';
-  const language = getDisplayValue('language', formData.language) || 'English';
-  const era = getDisplayValue('era', formData.era) || 'Contemporary';
-  const tempo = getDisplayValue('tempo', formData.tempo) || 'Medium';
-
-  // Create the structured music prompt
-  let prompt = createStructuredPrompt({
-    emotion, subEmotion, mood, vocalType, singerStyle,
-    genre1, genre2, style, language, era, tempo,
-    lyrics, 
-    emotionIntensity: formData.emotionIntensity,
-    genreFusion: formData.genreFusion,
-    commercial: formData.commercial,
-    detectedEmotions, 
+  // Use AI-enhanced prompt generation
+  const aiPrompt = aiPromptGenerator.generateAutoPrompt({
+    selectedEmotion,
+    formData,
+    lyrics,
+    detectedEmotions,
     aiSuggestions
   });
 
-  // Create metadata
-  const metadata = createMetadata({
-    emotion, mood, vocalType, genre1, genre2, 
-    language, era, tempo, detectedEmotions
+  // Create metadata with AI insights
+  const metadata = createEnhancedMetadata({
+    selectedEmotion, 
+    formData, 
+    lyrics,
+    detectedEmotions,
+    aiSuggestions
   });
 
   // Dispatch event to show output
   window.dispatchEvent(new CustomEvent('showOutput', { 
-    detail: { prompt, metadata } 
+    detail: { prompt: aiPrompt, metadata } 
   }));
 
-  return { prompt, metadata };
+  return { prompt: aiPrompt, metadata };
 };
 
 const getDisplayValue = (field: string, value: string) => {
@@ -58,103 +45,69 @@ const getDisplayValue = (field: string, value: string) => {
   ).join(' ');
 };
 
-const createStructuredPrompt = (params: any) => {
-  const tempoMap = {
-    'slow': '60-90 BPM',
-    'medium': '90-120 BPM', 
-    'upbeat': '120-140 BPM',
-    'fast': '140-180 BPM',
-    'variable': 'Variable tempo'
-  };
-
-  const keyMap = {
-    'joy': 'C major with bright progressions',
-    'love': 'G major with romantic chord substitutions',
-    'sadness': 'D minor with melancholic progressions',
-    'hope': 'F major with uplifting modulations',
-    'empowerment': 'E major with powerful chord movements',
-    'yearning': 'A minor with longing progressions',
-    'reflection': 'G major with contemplative changes',
-    'defiance': 'B minor with aggressive progressions',
-    'passion': 'A major with sensual chord flows',
-    'nostalgia': 'F major with bittersweet progressions'
-  };
-
-  const structureMap = {
-    'joy': 'Intro-Verse-Chorus-Verse-Chorus-Bridge-Double Chorus-Outro',
-    'love': 'Intro-Verse-Chorus-Verse-Chorus-Bridge-Final Chorus-Outro',
-    'sadness': 'Intro-Verse-Chorus-Verse-Chorus-Instrumental-Final Chorus',
-    'empowerment': 'Intro-Verse-Pre-Chorus-Chorus-Verse-Pre-Chorus-Chorus-Bridge-Final Chorus',
-    'default': 'Intro-Verse-Chorus-Verse-Chorus-Bridge-Final Chorus-Outro'
-  };
-
-  const vocalCharacteristics = {
-    'male lead': 'rich baritone with emotional depth',
-    'female lead': 'expressive soprano with dynamic range',
-    'duet': 'harmonized male-female interplay',
-    'group vocals': 'layered harmonies with call-response elements'
-  };
-
-  const instrumentationMap = {
-    'pop': 'synthesizers, electric guitar, bass, programmed drums',
-    'rock': 'electric guitars, bass guitar, live drums, occasional keys',
-    'ballad': 'piano foundation, strings, acoustic guitar, soft percussion',
-    'dance': 'electronic beats, synthesizers, bass drops, vocal chops',
-    'folk': 'acoustic guitar, harmonica, light percussion, string accents'
-  };
-
-  // Build structured prompt with character limit awareness
-  let prompt = '';
+const createEnhancedMetadata = (params: any) => {
+  const { selectedEmotion, formData, lyrics, detectedEmotions, aiSuggestions } = params;
   
-  // Style section (80-100 chars)
-  prompt += `[Style: ${params.genre1} ${params.genre2}, ${params.subEmotion.toLowerCase()} with ${params.mood.toLowerCase()} undertones] `;
+  // Generate AI confidence score
+  const aiRecommendation = aiPromptGenerator.generateIntelligentRecommendations(params);
+  const confidence = Math.round(aiRecommendation.confidence * 100);
   
-  // Vocals section (80-120 chars)
-  const vocalChar = vocalCharacteristics[params.vocalType.toLowerCase()] || 'expressive delivery';
-  prompt += `[Vocals: ${params.vocalType}, ${params.singerStyle.toLowerCase()}, ${vocalChar}] `;
+  let metadata = `<div class="space-y-3">`;
   
-  // Instrumentation section (80-120 chars)
-  const instruments = instrumentationMap[params.genre1.toLowerCase()] || 'dynamic instrumental arrangement';
-  prompt += `[Instrumentation: ${instruments}] `;
-  
-  // Tempo section (40-60 chars)
-  const tempoDesc = tempoMap[params.tempo.toLowerCase()] || params.tempo;
-  prompt += `[Tempo: ${tempoDesc}] `;
-  
-  // Mood section (60-80 chars)
-  prompt += `[Mood: ${params.mood}, ${params.emotion} atmosphere] `;
-  
-  // Key section (60-80 chars)
-  const keyInfo = keyMap[params.emotion] || 'C major with versatile progressions';
-  prompt += `[Key: ${keyInfo}] `;
-  
-  // Structure section (60-80 chars)
-  const structure = structureMap[params.emotion] || structureMap.default;
-  prompt += `[Structure: ${structure}] `;
-  
-  // Pacing section (80-120 chars)
-  const intensityDesc = params.emotionIntensity > 70 ? 'high energy dynamics' : 
-                       params.emotionIntensity > 40 ? 'moderate build-ups' : 'subtle dynamic changes';
-  prompt += `[Pacing: ${intensityDesc}, ${params.era.toLowerCase()} production style]`;
-  
-  // Ensure under 990 characters
-  if (prompt.length > 990) {
-    prompt = prompt.substring(0, 987) + '...';
+  // AI Confidence indicator
+  metadata += `<div class="bg-gradient-to-r from-purple-100 to-indigo-100 p-3 rounded-lg">`;
+  metadata += `<span class="text-purple-700 font-semibold">🤖 AI Confidence: ${confidence}%</span>`;
+  if (confidence > 80) {
+    metadata += ` <span class="text-green-600 text-sm">(Excellent Match)</span>`;
+  } else if (confidence > 60) {
+    metadata += ` <span class="text-blue-600 text-sm">(Good Match)</span>`;
+  } else {
+    metadata += ` <span class="text-yellow-600 text-sm">(Fair Match)</span>`;
   }
-
-  return prompt;
-};
-
-const createMetadata = (params: any) => {
-  return `
-    <div class="space-y-2">
-      <span class="inline-block mr-5 text-purple-700"><strong>Emotion:</strong> ${params.emotion}</span>
-      <span class="inline-block mr-5 text-purple-700"><strong>Mood:</strong> ${params.mood}</span>
-      <span class="inline-block mr-5 text-purple-700"><strong>Vocals:</strong> ${params.vocalType}</span>
-      <span class="inline-block mr-5 text-purple-700"><strong>Genres:</strong> ${params.genre1} + ${params.genre2}</span>
-      <span class="inline-block mr-5 text-purple-700"><strong>Language:</strong> ${params.language}</span>
-      <span class="inline-block mr-5 text-purple-700"><strong>Era:</strong> ${params.era}</span>
-      <span class="inline-block mr-5 text-purple-700"><strong>Tempo:</strong> ${params.tempo}</span>
-    </div>
-  `;
+  metadata += `</div>`;
+  
+  // Core parameters
+  metadata += `<div class="grid grid-cols-2 gap-2">`;
+  metadata += `<span class="text-purple-700"><strong>Emotion:</strong> ${selectedEmotion || 'Mixed'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Mood:</strong> ${getDisplayValue('mood', formData.mood) || 'Dynamic'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Vocals:</strong> ${getDisplayValue('vocalType', formData.vocalType) || 'Versatile'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Style:</strong> ${getDisplayValue('singerStyle', formData.singerStyle) || 'Expressive'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Primary Genre:</strong> ${getDisplayValue('genre1', formData.genre1) || 'Contemporary'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Secondary Genre:</strong> ${getDisplayValue('genre2', formData.genre2) || 'Fusion'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Language:</strong> ${getDisplayValue('language', formData.language) || 'English'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Era:</strong> ${getDisplayValue('era', formData.era) || 'Contemporary'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Tempo:</strong> ${getDisplayValue('tempo', formData.tempo) || 'Medium'}</span>`;
+  metadata += `<span class="text-purple-700"><strong>Intensity:</strong> ${formData.emotionIntensity || 70}%</span>`;
+  metadata += `</div>`;
+  
+  // Detected emotions if available
+  if (detectedEmotions && detectedEmotions.length > 0) {
+    metadata += `<div class="bg-green-50 p-3 rounded-lg">`;
+    metadata += `<span class="text-green-700 font-semibold">🎯 Detected Emotions: </span>`;
+    metadata += detectedEmotions.map(e => 
+      `<span class="inline-block bg-green-200 text-green-800 px-2 py-1 rounded text-xs mr-1">${e.emotion} (${e.confidence}%)</span>`
+    ).join('');
+    metadata += `</div>`;
+  }
+  
+  // AI reasoning if available
+  if (aiRecommendation.reasoning) {
+    metadata += `<div class="bg-blue-50 p-3 rounded-lg">`;
+    metadata += `<span class="text-blue-700 font-semibold">💡 AI Reasoning: </span>`;
+    metadata += `<span class="text-blue-600 text-sm">${aiRecommendation.reasoning}</span>`;
+    metadata += `</div>`;
+  }
+  
+  // Lyrics analysis if available
+  if (lyrics && lyrics.length > 20) {
+    const wordCount = lyrics.split(' ').length;
+    metadata += `<div class="bg-yellow-50 p-3 rounded-lg">`;
+    metadata += `<span class="text-yellow-700 font-semibold">📝 Lyrics Analysis: </span>`;
+    metadata += `<span class="text-yellow-600 text-sm">${wordCount} words analyzed for emotional context</span>`;
+    metadata += `</div>`;
+  }
+  
+  metadata += `</div>`;
+  
+  return metadata;
 };
